@@ -19,7 +19,10 @@ export interface ISearchOptions {
     pattern: string;
 
     /* The string to search for in the data set / members */
-    searchString: string;
+    searchString?: string;
+
+    /* The regular expression to search for in the data set / members */
+    searchRegex?: string;
 
     /* Options for data set get requests */
     getOptions?: IGetOptions;

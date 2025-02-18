@@ -50,10 +50,12 @@ export class Search {
 
     public static async dataSets(session: AbstractSession, searchOptions: ISearchOptions): Promise<ISearchResponse> {
         ImperativeExpect.toBeDefinedAndNonBlank(searchOptions.pattern, "pattern");
-        ImperativeExpect.toBeDefinedAndNonBlank(searchOptions.searchString, "searchString");
+        if (!searchOptions.searchString && !searchOptions.searchRegex) {
+            throw new ImperativeError({ msg: "Either searchString or searchRegex must be provided." });
+        }
 
         const failedDatasets: string[] = [];
-        const origSearchQuery = searchOptions.searchString;
+        const origSearchQuery = searchOptions.searchString || searchOptions.searchRegex;
         let timer: NodeJS.Timeout;
         this.timerExpired = false;
 
@@ -203,7 +205,7 @@ export class Search {
 
                 const lineLen = maxLine.toString().length;
                 const colLen = maxCol.toString().length;
-                const searchLen = searchOptions.searchString.length;
+                const searchLen = searchOptions.searchString?.length || searchOptions.searchRegex?.length || 0;
 
                 for (const {line, column, contents} of entry.matchList) {
                     // eslint-disable-next-line no-control-regex
@@ -263,11 +265,17 @@ export class Search {
 
                 // Handle case sensitivity
                 if (searchOptions.caseSensitive == undefined || searchOptions.caseSensitive === false) {
-                    searchOptions.searchString = searchOptions.searchString.toLowerCase();
+                    searchOptions.searchString = searchOptions.searchString?.toLowerCase();
+                    searchOptions.searchRegex = searchOptions.searchRegex?.toLowerCase();
                 }
 
                 // Set up the query
-                let queryParams = "?search=" + encodeURIComponent(searchOptions.searchString) + "&maxreturnsize=1";
+                let queryParams = "?maxreturnsize=1";
+                if (searchOptions.searchString) {
+                    queryParams += "&search=" + encodeURIComponent(searchOptions.searchString);
+                } else if (searchOptions.searchRegex) {
+                    queryParams += "&research=" + encodeURIComponent(searchOptions.searchRegex);
+                }
                 if (searchOptions.caseSensitive === true) { queryParams += "&insensitive=false"; }
                 let dsn = searchItem.dsn;
                 if (searchItem.member) { dsn += "(" + searchItem.member + ")"; }
@@ -354,7 +362,8 @@ export class Search {
 
                 // Handle case sensitivity
                 if (searchOptions.caseSensitive == undefined || searchOptions.caseSensitive === false) {
-                    searchOptions.searchString = searchOptions.searchString.toLowerCase();
+                    searchOptions.searchString = searchOptions.searchString?.toLowerCase();
+                    searchOptions.searchRegex = searchOptions.searchRegex?.toLowerCase();
                 }
 
                 // Perform the search
@@ -367,7 +376,7 @@ export class Search {
                         searchLine = line.toLowerCase();
                     }
 
-                    if (searchLine.includes(searchOptions.searchString)) {
+                    if (searchOptions.searchString && searchLine.includes(searchOptions.searchString)) {
                         let lastCol = 0;
                         let lastColIndexPlusLen = 0;
                         while (lastCol != -1) {
@@ -378,6 +387,12 @@ export class Search {
                                 // Append the real line - 1 indexed
                                 indicies.push({line: lineNum + 1, column: column + 1, contents: line});
                             }
+                        }
+                    } else if (searchOptions.searchRegex) {
+                        const regex = new RegExp(searchOptions.searchRegex, searchOptions.caseSensitive ? "" : "i");
+                        const match = regex.exec(searchLine);
+                        if (match) {
+                            indicies.push({line: lineNum + 1, column: match.index + 1, contents: line});
                         }
                     }
                     lineNum++;
