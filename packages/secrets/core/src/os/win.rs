@@ -14,6 +14,23 @@ use windows_sys::{
     },
 };
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CredentialPersistence {
+    Session,
+    LocalMachine,
+    Enterprise,
+}
+
+impl From<CredentialPersistence> for u32 {
+    fn from(persistence: CredentialPersistence) -> Self {
+        match persistence {
+            CredentialPersistence::Session => CRED_PERSIST_SESSION,
+            CredentialPersistence::LocalMachine => CRED_PERSIST_LOCAL_MACHINE,
+            CredentialPersistence::Enterprise => CRED_PERSIST_ENTERPRISE,
+        }
+    }
+}
+
 impl From<WIN32_ERROR> for KeyringError {
     fn from(error: WIN32_ERROR) -> Self {
         KeyringError::Os(win32_error_as_string(error))
@@ -73,19 +90,22 @@ fn encode_utf16(str: &str) -> Vec<u16> {
 }
 
 ///
-/// Attempts to set a password for a given service and account.
+/// Attempts to set a password for a given service and account with specified persistence.
 ///
 /// - `service`: The service name for the new credential
 /// - `account`: The account name for the new credential
+/// - `password`: The password for the new credential
+/// - `persistence`: The persistence level for the credential
 ///
 /// Returns:
 /// - `true` if the credential was stored successfully
 /// - A `KeyringError` if there were any issues interacting with the credential vault
 ///
-pub fn set_password(
+pub fn set_password_with_persistence(
     service: &String,
     account: &String,
     password: &String,
+    persistence: CredentialPersistence,
 ) -> Result<bool, KeyringError> {
     // Build WinAPI strings and object parameters from arguments
     let target_bytes = encode_utf16(format!("{}/{}", service, account).as_str());
@@ -100,7 +120,7 @@ pub fn set_password(
             dwLowDateTime: 0,
             dwHighDateTime: 0,
         },
-        Persist: CRED_PERSIST_ENTERPRISE,
+        Persist: persistence.into(),
         CredentialBlobSize: password.len() as u32,
         CredentialBlob: password.as_ptr() as *mut u8,
         AttributeCount: 0,
@@ -114,10 +134,34 @@ pub fn set_password(
 
     if write_result != TRUE {
         let error_code = unsafe { GetLastError() };
+        
+        // If the requested persistence level fails and it's not Enterprise, fallback to Enterprise
+        if persistence != CredentialPersistence::Enterprise {
+            return set_password_with_persistence(service, account, password, CredentialPersistence::Enterprise);
+        }
+        
         return Err(KeyringError::from(error_code));
     }
 
     Ok(true)
+}
+
+///
+/// Attempts to set a password for a given service and account.
+///
+/// - `service`: The service name for the new credential
+/// - `account`: The account name for the new credential
+///
+/// Returns:
+/// - `true` if the credential was stored successfully
+/// - A `KeyringError` if there were any issues interacting with the credential vault
+///
+pub fn set_password(
+    service: &String,
+    account: &String,
+    password: &String,
+) -> Result<bool, KeyringError> {
+    set_password_with_persistence(service, account, password, CredentialPersistence::Enterprise)
 }
 
 ///

@@ -5,6 +5,8 @@ import {
     findPassword,
     getPassword,
     setPassword,
+    setPasswordWithPersistence,
+    PersistenceLevel,
 } from "../index.js";
 
 // generate a number in range [min, max)
@@ -309,4 +311,69 @@ if (process.platform === "win32") {
             t.pass();
         }
     );
+
+    test.serial("setPasswordWithPersistence with Enterprise level", async (t) => {
+        await setPasswordWithPersistence(
+            "TestPersistence", 
+            "TestEnterprise", 
+            "enterprise-password", 
+            PersistenceLevel.Enterprise
+        );
+        
+        const result = await getPassword("TestPersistence", "TestEnterprise");
+        t.is(result, "enterprise-password");
+
+        await deletePassword("TestPersistence", "TestEnterprise");
+    });
+
+    test.serial("setPasswordWithPersistence with LocalMachine level", async (t) => {
+        await setPasswordWithPersistence(
+            "TestPersistence", 
+            "TestLocalMachine", 
+            "localmachine-password", 
+            PersistenceLevel.LocalMachine
+        );
+        
+        const result = await getPassword("TestPersistence", "TestLocalMachine");
+        t.is(result, "localmachine-password");
+        
+        await deletePassword("TestPersistence", "TestLocalMachine");
+    });
+
+    test.serial("setPasswordWithPersistence with Session level", async (t) => {
+        await setPasswordWithPersistence(
+            "TestPersistence", 
+            "TestSession", 
+            "session-password", 
+            PersistenceLevel.Session
+        );
+        
+        const result = await getPassword("TestPersistence", "TestSession");
+        t.is(result, "session-password");
+        
+        await deletePassword("TestPersistence", "TestSession");
+    });
+
+    test.serial("setPassword defaults to Enterprise persistence", async (t) => {
+        await setPassword("TestPersistence", "TestDefault", "default-password");
+        
+        const result = await getPassword("TestPersistence", "TestDefault");
+        t.is(result, "default-password");
+        
+        await deletePassword("TestPersistence", "TestDefault");
+    });
+
+    test.serial("setPasswordWithPersistence handles fallback to Enterprise", async (t) => {
+        await setPasswordWithPersistence(
+            "TestPersistence", 
+            "TestFallback", 
+            "fallback-password", 
+            PersistenceLevel.LocalMachine
+        );
+        
+        const result = await getPassword("TestPersistence", "TestFallback");
+        t.is(result, "fallback-password");
+        
+        await deletePassword("TestPersistence", "TestFallback");
+    });
 }

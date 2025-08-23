@@ -9,6 +9,13 @@ pub struct SetPassword {
     pub password: String,
 }
 
+pub struct SetPasswordWithPersistence {
+    pub service: String,
+    pub account: String,
+    pub password: String,
+    pub persistence: os::CredentialPersistence,
+}
+
 pub struct GetPassword {
     pub service: String,
     pub account: String,
@@ -62,7 +69,28 @@ impl Task for SetPassword {
     type JsValue = JsUnknown;
 
     fn compute(&mut self) -> Result<Self::Output> {
-        match os::set_password(&self.service, &self.account, &mut self.password) {
+        match os::set_password(&self.service, &self.account, &self.password) {
+            Ok(result) => Ok(result),
+            Err(err) => Err(napi::Error::from_reason(err.to_string())),
+        }
+    }
+
+    fn resolve(&mut self, env: Env, _output: Self::Output) -> Result<Self::JsValue> {
+        Ok(env.get_null()?.into_unknown())
+    }
+
+    fn reject(&mut self, _env: Env, err: Error) -> Result<Self::JsValue> {
+        Err(err)
+    }
+}
+
+#[napi]
+impl Task for SetPasswordWithPersistence {
+    type Output = bool;
+    type JsValue = JsUnknown;
+
+    fn compute(&mut self) -> Result<Self::Output> {
+        match os::set_password_with_persistence(&self.service, &self.account, &self.password, self.persistence) {
             Ok(result) => Ok(result),
             Err(err) => Err(napi::Error::from_reason(err.to_string())),
         }

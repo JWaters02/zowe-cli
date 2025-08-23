@@ -57,6 +57,8 @@ const {
     findPassword,
     getPassword,
     setPassword,
+    setPasswordWithPersistence,
+    PersistenceLevel,
 } = requireFn(binaryPath);
 
 module.exports.deletePassword = deletePassword;
@@ -64,3 +66,5 @@ module.exports.findCredentials = findCredentials;
 module.exports.findPassword = findPassword;
 module.exports.getPassword = getPassword;
 module.exports.setPassword = setPassword;
+module.exports.setPasswordWithPersistence = setPasswordWithPersistence;
+module.exports.PersistenceLevel = PersistenceLevel;

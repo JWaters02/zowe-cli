@@ -172,6 +172,23 @@ function getPassword(service: string, account: string) -> Promise<string | null>
 
 Stores a password with the given `service`, `account`, and `password`.
 
+Uses Enterprise persistence level on Windows.
+
 ```ts
 function setPassword(service: string, account: string, password: string) -> Promise<void>
+```
+
+### setPasswordWithPersistence
+
+Stores a password with the given `service`, `account`, and `password`, with a specified persistence level (Windows only).
+
+```ts
+// https://learn.microsoft.com/en-us/windows/win32/api/wincred/ns-wincred-credentiala#members
+enum PersistenceLevel {
+  Session,        // Credential is deleted when the user logs off
+  LocalMachine,   // Credential is stored for all users on the local machine
+  Enterprise      // Credential is stored for all users in the enterprise domain (default)
+}
+
+function setPasswordWithPersistence(service: string, account: string, password: string, persistence: PersistenceLevel) -> Promise<void>
 ```
