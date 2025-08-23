@@ -11,6 +11,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { ImperativeError } from "../../../error";
+import { CredentialPersistence, ICredentialSaveOptions } from "../doc/ICredentialManagerOptions";
 /**
  * String credential
  */
@@ -113,16 +114,17 @@ export abstract class AbstractCredentialManager {
      *
      * @param {string} account The account (or profile identifier) associated with credentials
      * @param {string} secureValue Value to be securely stored
+     * @param {ICredentialSaveOptions} options Optional persistence and other save options
      *
      * @returns {Promise<void>}
      *
      * @throws {@link ImperativeError} - when the secure field is missing.
      */
-    public async save(account: string, secureValue: string): Promise<void> {
+    public async save(account: string, secureValue: string, options?: ICredentialSaveOptions): Promise<void> {
     // Check both username and password are set and are not empty strings. Ah, the magic of JavaScript
         if (!(secureValue == null) && secureValue !== "") {
             const encodedString = Buffer.from(`${secureValue}`).toString("base64");
-            await this.saveCredentials(account, encodedString);
+            await this.saveCredentials(account, encodedString, options);
         } else {
             throw new ImperativeError({
                 msg: "Missing Secure Field"
@@ -177,10 +179,11 @@ export abstract class AbstractCredentialManager {
      *
      * @param {string} account - A user account (or profile identifier)
      * @param {SecureCredential} credentials - A base64 encoded username:password string
+     * @param {ICredentialSaveOptions} options - Optional persistence and other save options
      *
      * @returns {Promise<void>}
      *
      * @throws {ImperativeError} - when the set operation failed. The error object should have details about what failed.
      */
-    protected abstract saveCredentials(account: string, credentials: SecureCredential): Promise<void>;
+    protected abstract saveCredentials(account: string, credentials: SecureCredential, options?: ICredentialSaveOptions): Promise<void>;
 }

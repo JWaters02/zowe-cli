@@ -10,6 +10,7 @@
 */
 
 import { AbstractCredentialManager, SecureCredential } from "../..";
+import { ICredentialSaveOptions } from "../../src/doc/ICredentialManagerOptions";
 
 /**
  * This class is used to test the Credential Manager Factory load class method
@@ -32,7 +33,7 @@ export = class NoInitializeCredentialManager extends AbstractCredentialManager {
         return this.credentials;
     }
 
-    protected async saveCredentials(_account: string, _credentials: SecureCredential): Promise<void> {
+    protected async saveCredentials(_account: string, _credentials: SecureCredential, _options?: ICredentialSaveOptions): Promise<void> {
         return;
     }
 };

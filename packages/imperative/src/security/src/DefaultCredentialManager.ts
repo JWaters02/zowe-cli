@@ -12,6 +12,7 @@
 import { AbstractCredentialManager, SecureCredential } from "./abstract/AbstractCredentialManager";
 import { ImperativeError } from "../../error";
 import { Logger } from "../../logger";
+import { CredentialPersistence, ICredentialSaveOptions } from "./doc/ICredentialManagerOptions";
 
 import type { keyring as keytar } from "@zowe/secrets-for-zowe-sdk"; // Used for typing purposes only
 
@@ -204,15 +205,16 @@ export class DefaultCredentialManager extends AbstractCredentialManager {
      *
      * @param {string} account The account to set credentials
      * @param {SecureCredential} credentials The credentials to store
+     * @param {ICredentialSaveOptions} options Optional persistence and other save options
      *
      * @returns {Promise<void>} A promise that the function has completed.
      *
      * @throws {@link ImperativeError} if keytar is not defined.
      */
-    protected async saveCredentials(account: string, credentials: SecureCredential): Promise<void> {
+    protected async saveCredentials(account: string, credentials: SecureCredential, options?: ICredentialSaveOptions): Promise<void> {
         this.checkForKeytar();
         await this.deleteCredentialsHelper(account, true);
-        await this.setCredentialsHelper(this.service, account, credentials);
+        await this.setCredentialsHelper(this.service, account, credentials, options?.persistence);
     }
 
     /**
@@ -290,8 +292,20 @@ export class DefaultCredentialManager extends AbstractCredentialManager {
      * @param service The string service name.
      * @param account The string account name.
      * @param value The string credential.
+     * @param persistence The credential persistence level (defaults to Enterprise).
      */
-    private async setCredentialsHelper(service: string, account: string, value: SecureCredential): Promise<void> {
+    private async setCredentialsHelper(service: string, account: string, value: SecureCredential, persistence?: CredentialPersistence): Promise<void> {
+        const persistenceLevel = persistence || CredentialPersistence.Enterprise;
+        const persistenceMapping = {
+            [CredentialPersistence.Session]: this.keytar.PersistenceLevel?.Session,
+            [CredentialPersistence.LocalMachine]: this.keytar.PersistenceLevel?.LocalMachine,
+            [CredentialPersistence.Enterprise]: this.keytar.PersistenceLevel?.Enterprise
+        };
+
+        const setPasswordFn = this.keytar.setPasswordWithPersistence && persistenceMapping[persistenceLevel] !== undefined
+            ? (svc: string, acc: string, val: string) => this.keytar.setPasswordWithPersistence(svc, acc, val, persistenceMapping[persistenceLevel])
+            : (svc: string, acc: string, val: string) => this.keytar.setPassword(svc, acc, val);
+
         // On Windows, save value across multiple fields if needed
         if (process.platform === "win32" && value.length > this.WIN32_CRED_MAX_STRING_LENGTH) {
             // First delete any fields previously used to store this value
@@ -300,13 +314,13 @@ export class DefaultCredentialManager extends AbstractCredentialManager {
             let index = 1;
             while (value.length > 0) {
                 const tempValue = value.slice(0, this.WIN32_CRED_MAX_STRING_LENGTH);
-                await this.keytar.setPassword(service, `${account}-${index}`, tempValue);
+                await setPasswordFn(service, `${account}-${index}`, tempValue);
                 value = value.slice(this.WIN32_CRED_MAX_STRING_LENGTH);
                 index++;
             }
         } else {
             // Fall back to simple storage of single-field value
-            await this.keytar.setPassword(service, account, value);
+            await setPasswordFn(service, account, value);
         }
     }
 

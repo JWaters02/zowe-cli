@@ -11,6 +11,7 @@
 
 import { AbstractCredentialManager, SecureCredential } from "./abstract/AbstractCredentialManager";
 import { BadCredentialManagerError } from "./errors/BadCredentialManagerError";
+import { ICredentialSaveOptions } from "./doc/ICredentialManagerOptions";
 
 /**
  * **NOTE** THIS CLASS SHOULD NOT BE EXPORTED FOR PUBLIC CONSUMPTION.
@@ -39,7 +40,7 @@ export class InvalidCredentialManager extends AbstractCredentialManager {
         throw new BadCredentialManagerError(this.causeError);
     }
 
-    protected async saveCredentials(_account: string, _credentials: SecureCredential): Promise<void> {
+    protected async saveCredentials(_account: string, _credentials: SecureCredential, _options?: ICredentialSaveOptions): Promise<void> {
         throw new BadCredentialManagerError(this.causeError);
     }
 }
